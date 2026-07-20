@@ -36,7 +36,7 @@
         <div class="empty-cards">
           <div class="empty-card">
             <h3>&#x1F517; Connect to Strava</h3>
-            <p>Live data via your own free Strava API application. One-time, two-minute setup.</p>
+            <p>Live data via your own Strava API application. Two-minute setup; requires a Strava subscription (Strava's rule for API access).</p>
             <button class="btn btn-primary" id="btn-connect-hero">Connect Strava</button>
           </div>
           <div class="empty-card">
@@ -86,6 +86,7 @@
         <input type="password" id="input-client-secret" autocomplete="off" required placeholder="40-character hex string">
       </label>
       <p class="modal-hint">Stored only in this browser's localStorage. This page never sends them anywhere except directly to strava.com.</p>
+      <p class="modal-hint">&#9888;&#65038; Strava requires the app owner to have an <strong>active Strava subscription</strong> — without one the app shows as "inactive" and data requests fail. No subscription? Use the CSV export option instead; it works for everyone.</p>
       <div class="modal-actions">
         <button class="btn" value="cancel" formnovalidate>Cancel</button>
         <button class="btn btn-primary" value="connect" id="btn-do-connect">Authorize with Strava</button>

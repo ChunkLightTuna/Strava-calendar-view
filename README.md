@@ -12,10 +12,17 @@ except to talk directly to `strava.com`.
 ### 1. Connect to Strava (live data)
 
 Strava's OAuth flow normally requires a server to hold a client secret. This
-site instead uses a **bring-your-own-app** flow: you create your own free
-Strava API application and the browser does the whole OAuth dance itself.
-Your client ID/secret are stored only in your browser's localStorage and are
-only ever sent to `strava.com`.
+site instead uses a **bring-your-own-app** flow: you create your own Strava
+API application and the browser does the whole OAuth dance itself. Your
+client ID/secret are stored only in your browser's localStorage and are only
+ever sent to `strava.com`.
+
+> **Subscription required:** Strava's Developer Program requires the account
+> that owns the API application to have an active Strava subscription.
+> Without one the application is marked *inactive* and every API request
+> fails with a 403 (`Application.Status: Inactive`) — even though creating
+> the app and authorizing it appear to work. If you don't subscribe, use the
+> CSV export option below instead; it needs no subscription.
 
 1. Go to [strava.com/settings/api](https://www.strava.com/settings/api) and
    create an application (any name, category, and website).

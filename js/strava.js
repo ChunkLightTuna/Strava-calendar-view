@@ -121,6 +121,35 @@ async function accessToken() {
   return token.access_token;
 }
 
+// Turn a Strava API error response into a message that names the actual
+// problem. The important case: Strava deactivates API applications whose
+// owner has no active Strava subscription (a Developer Program requirement
+// since ~2026), and reports it only as an opaque 403.
+async function interpretApiError(res) {
+  let body = null;
+  try { body = await res.json(); } catch { /* no body */ }
+  const errors = body?.errors ?? [];
+  const detail = [body?.message, ...errors.map((e) => `${e.resource}.${e.field}: ${e.code}`)]
+    .filter(Boolean).join('; ');
+
+  if (res.status === 429) {
+    return new Error('Strava rate limit reached — try again in ~15 minutes.');
+  }
+  if (errors.some((e) => e.resource === 'Application' && e.field === 'Status' && e.code === 'Inactive')) {
+    return new Error('Your Strava API application is inactive. Strava requires the app owner to have ' +
+      'an active Strava subscription for API access — subscribe and reactivate the app at ' +
+      'strava.com/settings/api. No subscription? Load your Strava export CSV instead ' +
+      '(Strava Settings → My Account → Download Request) — that works without one.');
+  }
+  if (errors.some((e) => /activity/.test(e.field ?? '') || e.field === 'access_token')
+      || res.status === 401 || res.status === 403) {
+    return new Error(`Strava rejected the request (${res.status}${detail ? `: ${detail}` : ''}). ` +
+      'If this mentions permissions, click "Connect Strava" and re-authorize, keeping the ' +
+      '"View data about your activities" checkboxes ticked.');
+  }
+  return new Error(`Strava API error (${res.status}${detail ? `: ${detail}` : ''}).`);
+}
+
 // Probe the connection: what did Strava grant, and which endpoints work?
 // /athlete needs only the 'read' scope; /athlete/activities needs activity:read.
 export async function diagnostics() {
@@ -193,17 +222,7 @@ async function fetchRange(afterEpochS, beforeEpochS) {
     const res = await fetch(`https://www.strava.com/api/v3/athlete/activities?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!res.ok) {
-      let detail = '';
-      try { detail = (await res.json()).message || ''; } catch { /* no body */ }
-      if (res.status === 429) throw new Error('Strava rate limit reached — try again in ~15 minutes.');
-      if (res.status === 401 || res.status === 403) {
-        throw new Error(`Strava rejected the request (${res.status}${detail ? `: ${detail}` : ''}). ` +
-          'This usually means the authorization is missing activity permissions — click "Connect Strava" ' +
-          'and re-authorize, keeping the "View data about your activities" checkboxes ticked.');
-      }
-      throw new Error(`Strava API error (${res.status}${detail ? `: ${detail}` : ''}).`);
-    }
+    if (!res.ok) throw await interpretApiError(res);
     const batch = await res.json();
     all.push(...batch.map(compact));
     if (batch.length < 200) break;
