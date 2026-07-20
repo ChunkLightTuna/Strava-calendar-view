@@ -8,6 +8,7 @@ import { demoActivities } from './demo.js';
 import { openDetail, wireDetailModal } from './detail.js';
 import { openZip } from './zip.js';
 import { routeFromFile } from './routes.js';
+import { activityFromFile, isActivityFile } from './activityfiles.js';
 import { renderStats } from './stats.js';
 
 const LS_SETTINGS = 'scv.settings';
@@ -114,7 +115,7 @@ async function render({ force = false } = {}) {
 
   const badge = $('source-badge');
   badge.hidden = state.source === null;
-  badge.textContent = { api: 'Strava API', csv: 'CSV export', demo: 'Demo data' }[state.source] ?? '';
+  badge.textContent = { api: 'Strava API', csv: 'Export data', demo: 'Demo data' }[state.source] ?? '';
 
   if (state.source === null) return;
 
@@ -157,19 +158,64 @@ function setSource(source) {
 
 // ---------- CSV loading ----------
 
-function loadCsvText(text, { persist = true } = {}) {
-  const activities = parseActivitiesCsv(text);
-  state.csvActivities = activities;
-  if (persist) {
-    try { localStorage.setItem(LS_CSV, JSON.stringify(activities)); }
-    catch { showNotice('Export loaded (too large to remember across reloads — re-drop the file next visit).'); }
+function persistActivities(activities) {
+  try {
+    localStorage.setItem(LS_CSV, JSON.stringify(activities));
+  } catch {
+    // Likely quota — routes are the bulk; retry without them.
+    try {
+      localStorage.setItem(LS_CSV, JSON.stringify(activities.map((a) => ({ ...a, polyline: null }))));
+    } catch {
+      showNotice('Data loaded (too large to remember across reloads — re-drop the files next visit).');
+    }
   }
-  const latest = activities[activities.length - 1];
-  const d = new Date(latest.start);
+}
+
+function loadParsedActivities(activities) {
+  if (!activities.length) {
+    showNotice('No readable activities found in those files.');
+    return;
+  }
+  activities.sort((a, b) => a.start - b.start);
+  state.csvActivities = activities;
+  persistActivities(activities);
+  const d = new Date(activities[activities.length - 1].start);
   state.year = d.getFullYear();
   state.month = d.getMonth();
   setSource('csv');
-  showNotice(`Loaded ${activities.length.toLocaleString()} activities from your export.`);
+  showNotice(`Loaded ${activities.length.toLocaleString()} activities.`);
+}
+
+function loadCsvText(text) {
+  loadParsedActivities(parseActivitiesCsv(text));
+}
+
+// Non-Strava archive (Garmin account export, a zipped folder of files):
+// parse every GPX/TCX/FIT in it, recursing one level into nested ZIPs the
+// way Garmin's archive nests its uploaded FIT files.
+async function activitiesFromGenericZip(zip) {
+  const activities = [];
+  let done = 0;
+  const parseEntry = async (extract, name) => {
+    try {
+      const activity = await activityFromFile(name, await extract(name));
+      if (activity) activities.push(activity);
+    } catch { /* skip unreadable file */ }
+    if (++done % 50 === 0) showNotice(`Reading activity files… ${done}`);
+  };
+  for (const name of zip.entries.keys()) {
+    if (isActivityFile(name)) await parseEntry(zip.extract, name);
+  }
+  for (const name of zip.entries.keys()) {
+    if (!/\.zip$/i.test(name)) continue;
+    try {
+      const inner = await openZip(new Blob([await zip.extract(name)]));
+      for (const innerName of inner.entries.keys()) {
+        if (isActivityFile(innerName)) await parseEntry(inner.extract, innerName);
+      }
+    } catch { /* not a readable nested archive */ }
+  }
+  return activities;
 }
 
 async function handleZip(file) {
@@ -177,22 +223,46 @@ async function handleZip(file) {
   const csvName = zip.entries.has('activities.csv')
     ? 'activities.csv'
     : [...zip.entries.keys()].find((n) => n.endsWith('/activities.csv'));
-  if (!csvName) throw new Error('No activities.csv inside that archive — is it the Strava export ZIP?');
-  const csvText = new TextDecoder().decode(await zip.extract(csvName));
-  state.zip = zip;
-  state.zipRoot = csvName.slice(0, csvName.length - 'activities.csv'.length);
-  state.routeCache = new Map();
-  loadCsvText(csvText);
-  showNotice(`Loaded ${state.csvActivities.length.toLocaleString()} activities from your export — ` +
-    'open an activity to see its route from the archive’s GPX/TCX/FIT files. ' +
-    '(Routes need the ZIP: after a reload, drop it again.)');
+  if (csvName) {
+    // Strava export: calendar from the CSV, routes lazily from the archive
+    const csvText = new TextDecoder().decode(await zip.extract(csvName));
+    state.zip = zip;
+    state.zipRoot = csvName.slice(0, csvName.length - 'activities.csv'.length);
+    state.routeCache = new Map();
+    loadCsvText(csvText);
+    showNotice(`Loaded ${state.csvActivities.length.toLocaleString()} activities from your Strava export — ` +
+      'open an activity to see its route. (Routes need the ZIP: after a reload, drop it again.)');
+    return;
+  }
+  showNotice('Reading activity files from the archive…');
+  loadParsedActivities(await activitiesFromGenericZip(zip));
 }
 
-function handleFile(file) {
-  if (!file) return;
-  const isZip = /\.zip$/i.test(file.name) || file.type === 'application/zip' || file.type === 'application/x-zip-compressed';
-  const load = isZip ? handleZip(file) : file.text().then((text) => loadCsvText(text));
-  load.catch((err) => showNotice(`Couldn't read that file: ${err.message || err}`));
+async function handleActivityFiles(files) {
+  const activities = [];
+  let done = 0;
+  for (const file of files) {
+    try {
+      const activity = await activityFromFile(file.name, new Uint8Array(await file.arrayBuffer()));
+      if (activity) activities.push(activity);
+    } catch { /* skip unreadable file */ }
+    if (++done % 25 === 0) showNotice(`Reading files… ${done}/${files.length}`);
+  }
+  loadParsedActivities(activities);
+}
+
+function handleFiles(fileList) {
+  const files = [...(fileList ?? [])];
+  if (!files.length) return;
+  const isZip = (f) => /\.zip$/i.test(f.name) || f.type === 'application/zip' || f.type === 'application/x-zip-compressed';
+  let load;
+  const zip = files.find(isZip);
+  const activityFiles = files.filter((f) => isActivityFile(f.name));
+  if (zip) load = handleZip(zip);
+  else if (activityFiles.length) load = handleActivityFiles(activityFiles);
+  else if (files.some((f) => /\.csv$/i.test(f.name))) load = files.find((f) => /\.csv$/i.test(f.name)).text().then(loadCsvText);
+  else { showNotice('Drop a Strava/Garmin export .zip, GPX/TCX/FIT files, or activities.csv.'); return; }
+  load.catch((err) => showNotice(`Couldn't read that: ${err.message || err}`));
 }
 
 // For CSV/ZIP activities the route lives in the archive; extract and parse it
@@ -301,7 +371,7 @@ function wireEvents() {
   $('btn-csv').addEventListener('click', pickFile);
   $('btn-csv-hero').addEventListener('click', pickFile);
   $('file-input').addEventListener('change', (e) => {
-    handleFile(e.target.files[0]);
+    handleFiles(e.target.files);
     e.target.value = '';
   });
 
@@ -320,7 +390,7 @@ function wireEvents() {
     e.preventDefault();
     dragDepth = 0;
     $('drop-overlay').hidden = true;
-    handleFile(e.dataTransfer?.files?.[0]);
+    handleFiles(e.dataTransfer?.files);
   });
 
   // Demo
@@ -440,6 +510,10 @@ async function init() {
       const saved = JSON.parse(localStorage.getItem(LS_CSV));
       if (Array.isArray(saved) && saved.length) {
         state.csvActivities = saved;
+        // open on the latest month that actually has data
+        const latest = new Date(saved[saved.length - 1].start);
+        state.year = latest.getFullYear();
+        state.month = latest.getMonth();
         setSource('csv');
         return;
       }

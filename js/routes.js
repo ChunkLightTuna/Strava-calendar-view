@@ -31,17 +31,35 @@ function parseTcx(text) {
 }
 
 // Minimal FIT decoder: walks the record stream and pulls position_lat/long
-// (fields 0/1, sint32 semicircles) out of "record" messages (global 20).
-// Anything unexpected aborts with whatever points were collected so far.
-function parseFit(bytes) {
-  if (bytes.length < 14) return [];
-  if (!(bytes[8] === 0x2e && bytes[9] === 0x46 && bytes[10] === 0x49 && bytes[11] === 0x54)) return []; // ".FIT"
+// (fields 0/1, sint32 semicircles) out of "record" messages (global 20),
+// plus the summary fields of the "session" message (global 18) and record
+// timestamps, so a FIT file can stand alone as an activity. Anything
+// unexpected aborts with whatever was collected so far.
+
+// session (global 18) field numbers we care about — raw values, scaled later
+const SESSION_FIELDS = {
+  2: 'startTime', 5: 'sport', 7: 'elapsed', 8: 'timer', 9: 'distance',
+  14: 'avgSpeed', 16: 'avgHr', 17: 'maxHr', 20: 'avgPower', 21: 'maxPower', 22: 'ascent',
+};
+const INVALID_BY_SIZE = { 1: 0xff, 2: 0xffff, 4: 0xffffffff };
+
+export function parseFitData(bytes) {
+  const out = { points: [], session: null, firstTimestamp: null, lastTimestamp: null };
+  if (bytes.length < 14) return out;
+  if (!(bytes[8] === 0x2e && bytes[9] === 0x46 && bytes[10] === 0x49 && bytes[11] === 0x54)) return out; // ".FIT"
   const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const headerSize = bytes[0];
   const end = Math.min(headerSize + dv.getUint32(4, true), bytes.length);
   const defs = new Map();
-  const points = [];
+  const points = out.points;
   const SEMI = 180 / 2147483648;
+
+  const readUint = (pos, size, little) => {
+    if (size === 1) return dv.getUint8(pos);
+    if (size === 2) return dv.getUint16(pos, little);
+    if (size === 4) return dv.getUint32(pos, little);
+    return null;
+  };
 
   const readData = (def, pos) => {
     if (pos + def.dataSize > end) return end; // truncated — stop
@@ -49,10 +67,24 @@ function parseFit(bytes) {
     let lon = null;
     let q = pos;
     for (const f of def.fields) {
-      if (def.globalNum === 20 && (f.num === 0 || f.num === 1) && f.size === 4) {
-        const v = dv.getInt32(q, def.little);
-        if (v !== 0x7fffffff) {
-          if (f.num === 0) lat = v * SEMI; else lon = v * SEMI;
+      if (def.globalNum === 20) {
+        if ((f.num === 0 || f.num === 1) && f.size === 4) {
+          const v = dv.getInt32(q, def.little);
+          if (v !== 0x7fffffff) {
+            if (f.num === 0) lat = v * SEMI; else lon = v * SEMI;
+          }
+        } else if (f.num === 253 && f.size === 4) {
+          const t = dv.getUint32(q, def.little);
+          if (t !== 0xffffffff) {
+            out.firstTimestamp ??= t;
+            out.lastTimestamp = t;
+          }
+        }
+      } else if (def.globalNum === 18 && SESSION_FIELDS[f.num] && INVALID_BY_SIZE[f.size] !== undefined) {
+        const v = readUint(q, f.size, def.little);
+        if (v != null && v !== INVALID_BY_SIZE[f.size]) {
+          out.session ??= {};
+          out.session[SESSION_FIELDS[f.num]] = v;
         }
       }
       q += f.size;
@@ -97,10 +129,10 @@ function parseFit(bytes) {
       p = readData(def, p);
     }
   }
-  return points;
+  return out;
 }
 
-function toPolyline(points) {
+export function toPolyline(points) {
   const clean = points.filter(([lat, lon]) =>
     Number.isFinite(lat) && Number.isFinite(lon) && (Math.abs(lat) > 1e-6 || Math.abs(lon) > 1e-6));
   if (clean.length < 2) return null;
@@ -119,7 +151,7 @@ export async function routeFromFile(filename, bytes) {
     data = await gunzip(data);
     name = name.slice(0, -3);
   }
-  if (name.endsWith('.fit')) return toPolyline(parseFit(data));
+  if (name.endsWith('.fit')) return toPolyline(parseFitData(data).points);
   const text = new TextDecoder().decode(data);
   if (name.endsWith('.gpx')) return toPolyline(parseGpx(text));
   if (name.endsWith('.tcx')) return toPolyline(parseTcx(text));

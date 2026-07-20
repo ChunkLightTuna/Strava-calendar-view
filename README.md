@@ -37,7 +37,25 @@ ever sent to `strava.com`.
 Activities are fetched per month and cached in localStorage (past months
 indefinitely, the current month for 15 minutes — or hit **Refresh**).
 
-### 2. Drop in your Strava export (no setup, no subscription)
+### 2. Drop in export files (no setup, no subscription)
+
+Works with more than Strava — the page reads the standard activity file
+formats every platform exports:
+
+- **Strava**: the export ZIP or its `activities.csv` (details below)
+- **Garmin**: the full account archive ZIP (from
+  [garmin.com account management](https://www.garmin.com/account/datamanagement/)),
+  or individual GPX/TCX/FIT files exported from Garmin Connect
+- **COROS / Wahoo / Suunto / anything else**: export activities as
+  GPX, TCX, or FIT (gzipped fine) and drop them in — multiple files at once
+  work. Stats come from the FIT session summary or are derived from the
+  trackpoints; sport type, HR, and power are picked up when present.
+
+(Live-API connections for Garmin/COROS aren't possible from a static site —
+Garmin's API is a gated business program and COROS has no public individual
+API — so files are the path for those platforms.)
+
+#### Strava export
 
 1. On Strava: **Settings → My Account → Download or Delete Your Account →
    Get Started** (only step 2, "Download Request"), or use the

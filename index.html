@@ -24,7 +24,7 @@
       <div class="topbar-right">
         <button class="btn" id="btn-refresh" title="Re-fetch this month from Strava" hidden>&#x21bb; Refresh</button>
         <button class="btn" id="btn-connect">Connect Strava</button>
-        <button class="btn" id="btn-csv" title="Load your Strava export (.zip or activities.csv)">Load export</button>
+        <button class="btn" id="btn-csv" title="Load a Strava/Garmin export .zip, GPX/TCX/FIT files, or activities.csv">Load export</button>
         <button class="btn btn-icon" id="btn-settings" title="Settings" aria-label="Settings">&#x2699;&#xFE0E;</button>
       </div>
     </header>
@@ -40,9 +40,9 @@
             <button class="btn btn-primary" id="btn-connect-hero">Connect Strava</button>
           </div>
           <div class="empty-card">
-            <h3>&#x1F4C2; Drop your Strava export</h3>
-            <p>Download your data from Strava (Settings &#x2192; My Account &#x2192; Get Started) and drop the whole export <code>.zip</code> here — route maps included. Just the <code>activities.csv</code> works too. No subscription needed.</p>
-            <button class="btn btn-primary" id="btn-csv-hero">Load export (.zip or .csv)</button>
+            <h3>&#x1F4C2; Drop your export files</h3>
+            <p>Strava export <code>.zip</code> (or its <code>activities.csv</code>), a Garmin account archive, or any <code>GPX</code>/<code>TCX</code>/<code>FIT</code> files from Garmin Connect, COROS, Wahoo, Suunto&#8230; Route maps included. No subscription needed.</p>
+            <button class="btn btn-primary" id="btn-csv-hero">Load export files</button>
           </div>
         </div>
         <p class="empty-footnote">Just looking around? <a href="#" id="link-demo">Load demo data</a></p>
@@ -65,10 +65,10 @@
   </div>
 
   <div class="drop-overlay" id="drop-overlay" hidden>
-    <div class="drop-overlay-inner">Drop your Strava export (<code>.zip</code> or <code>activities.csv</code>)</div>
+    <div class="drop-overlay-inner">Drop an export <code>.zip</code>, <code>GPX</code>/<code>TCX</code>/<code>FIT</code> files, or <code>activities.csv</code></div>
   </div>
 
-  <input type="file" id="file-input" accept=".csv,.zip,text/csv,application/zip" hidden>
+  <input type="file" id="file-input" accept=".csv,.zip,.gpx,.tcx,.fit,.gz,text/csv,application/zip" multiple hidden>
 
   <dialog class="modal" id="connect-modal">
     <form method="dialog" class="modal-body" id="connect-form">
