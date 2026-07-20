@@ -41,7 +41,7 @@ indefinitely, the current month for 15 minutes — or hit **Refresh**).
    Get Started** (only step 2, "Download Request"), or use the
    [export page](https://www.strava.com/athlete/delete_your_account).
 2. Strava emails you an archive (`export_<id>.zip`).
-3. Drag the **whole ZIP** onto the page (or use **Load CSV**). Just the
+3. Drag the **whole ZIP** onto the page (or use **Load export**). Just the
    `activities.csv` from inside it works too, but the ZIP also gives you
    **route maps**, parsed from the archive's GPX/TCX/FIT files (gzipped
    ones included) when you open an activity.
