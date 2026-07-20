@@ -4,8 +4,10 @@ A static, fully client-side calendar view of your Strava activities. No server,
 no database, no analytics — your data and credentials never leave your browser
 except to talk directly to `strava.com`.
 
-**Live site:** enable GitHub Pages for this repo (see below) and it's served at
-`https://<username>.github.io/Strava-calendar-view/`.
+**Live site: [strava.oeleri.ch](https://strava.oeleri.ch)**
+
+(Forks: enable GitHub Pages as described below and your copy is served at
+`https://<username>.github.io/Strava-calendar-view/`.)
 
 ## Two ways to load your data
 
