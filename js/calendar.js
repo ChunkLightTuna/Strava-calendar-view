@@ -141,13 +141,7 @@ export function renderSummary(container, { year, month, activities, units }) {
     t.elevation += a.elevation || 0;
   }
 
-  const allTime = inMonth.reduce((s, a) => s + (a.movingTime || a.elapsedTime || 0), 0);
-  const overall = el('div', 'tile tile-total');
-  overall.appendChild(el('span', 'tile-label', 'This month'));
-  overall.appendChild(el('span', 'tile-value', `${inMonth.length} ${inMonth.length === 1 ? 'activity' : 'activities'}`));
-  overall.appendChild(el('span', 'tile-sub', formatDuration(allTime) ?? '—'));
-  container.appendChild(overall);
-
+  // per-sport breakdown; the overall totals live in the statistics block below
   for (const group of groupsInOrder()) {
     const t = totals.get(group.key);
     if (!t) continue;

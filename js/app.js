@@ -8,6 +8,7 @@ import { demoActivities } from './demo.js';
 import { openDetail, wireDetailModal } from './detail.js';
 import { openZip } from './zip.js';
 import { routeFromFile } from './routes.js';
+import { renderStats } from './stats.js';
 
 const LS_SETTINGS = 'scv.settings';
 const LS_CSV = 'scv.csvData';
@@ -23,6 +24,8 @@ const state = {
   zip: null, // open export archive (this session only — File handles don't persist)
   zipRoot: '',
   routeCache: new Map(),
+  demoData: null,
+  sportFilter: 'all',
   settings: { units: 'imperial', weekStart: 0, theme: 'auto' },
 };
 
@@ -63,8 +66,42 @@ async function activitiesForCurrentMonth({ force = false } = {}) {
     return strava.activitiesForMonth(state.year, state.month, { force });
   }
   if (state.source === 'csv') return state.csvActivities ?? [];
-  if (state.source === 'demo') return demoActivities();
+  if (state.source === 'demo') return (state.demoData ??= demoActivities());
   return [];
+}
+
+// Any month's activities, for the statistics comparisons. API months come
+// from the per-month cache; local sources are filtered in memory.
+async function monthActivities(year, month) {
+  if (state.source === 'api') {
+    try { return await strava.activitiesForMonth(year, month); } catch { return []; }
+  }
+  const all = state.source === 'csv' ? (state.csvActivities ?? [])
+    : state.source === 'demo' ? (state.demoData ??= demoActivities()) : [];
+  return all.filter((a) => {
+    const d = new Date(a.start);
+    return d.getFullYear() === year && d.getMonth() === month;
+  });
+}
+
+let statsSeq = 0;
+async function renderStatsSection() {
+  const mySeq = ++statsSeq;
+  const container = $('stats');
+  if (state.source === null) { container.replaceChildren(); return; }
+  try {
+    const block = await renderStats({
+      year: state.year,
+      month: state.month,
+      units: state.settings.units,
+      weekStart: Number(state.settings.weekStart),
+      sportFilter: state.sportFilter,
+      getMonth: monthActivities,
+      onFilterChange: (value) => { state.sportFilter = value; renderStatsSection(); },
+    });
+    if (mySeq !== statsSeq) return; // superseded by a newer render
+    container.replaceChildren(block);
+  } catch { /* stats are best-effort; the calendar shows data errors */ }
 }
 
 let renderSeq = 0;
@@ -106,6 +143,7 @@ async function render({ force = false } = {}) {
     return d.getFullYear() === state.year && d.getMonth() === state.month;
   }));
   renderSummary($('summary'), opts);
+  renderStatsSection();
 }
 
 function setSource(source) {
