@@ -6,6 +6,8 @@ import { parseActivitiesCsv } from './csv.js';
 import { renderCalendar, renderLegend, renderSummary, monthTitle } from './calendar.js';
 import { demoActivities } from './demo.js';
 import { openDetail, wireDetailModal } from './detail.js';
+import { openZip } from './zip.js';
+import { routeFromFile } from './routes.js';
 
 const LS_SETTINGS = 'scv.settings';
 const LS_CSV = 'scv.csvData';
@@ -18,6 +20,9 @@ const state = {
   month: new Date().getMonth(),
   source: null, // 'api' | 'csv' | 'demo'
   csvActivities: null,
+  zip: null, // open export archive (this session only — File handles don't persist)
+  zipRoot: '',
+  routeCache: new Map(),
   settings: { units: 'imperial', weekStart: 0, theme: 'auto' },
 };
 
@@ -90,7 +95,10 @@ async function render({ force = false } = {}) {
     activities,
     units: state.settings.units,
     weekStart: Number(state.settings.weekStart),
-    onActivityClick: (activity) => openDetail(activity, state.settings.units),
+    onActivityClick: async (activity) => {
+      await resolveRoute(activity);
+      openDetail(activity, state.settings.units);
+    },
   };
   renderCalendar($('calendar'), opts);
   renderLegend($('legend'), activities.filter((a) => {
@@ -126,11 +134,47 @@ function loadCsvText(text, { persist = true } = {}) {
   showNotice(`Loaded ${activities.length.toLocaleString()} activities from your export.`);
 }
 
+async function handleZip(file) {
+  const zip = await openZip(file);
+  const csvName = zip.entries.has('activities.csv')
+    ? 'activities.csv'
+    : [...zip.entries.keys()].find((n) => n.endsWith('/activities.csv'));
+  if (!csvName) throw new Error('No activities.csv inside that archive — is it the Strava export ZIP?');
+  const csvText = new TextDecoder().decode(await zip.extract(csvName));
+  state.zip = zip;
+  state.zipRoot = csvName.slice(0, csvName.length - 'activities.csv'.length);
+  state.routeCache = new Map();
+  loadCsvText(csvText);
+  showNotice(`Loaded ${state.csvActivities.length.toLocaleString()} activities from your export — ` +
+    'open an activity to see its route from the archive’s GPX/TCX/FIT files. ' +
+    '(Routes need the ZIP: after a reload, drop it again.)');
+}
+
 function handleFile(file) {
   if (!file) return;
-  file.text()
-    .then((text) => loadCsvText(text))
-    .catch((err) => showNotice(`Couldn't read that file: ${err.message || err}`));
+  const isZip = /\.zip$/i.test(file.name) || file.type === 'application/zip' || file.type === 'application/x-zip-compressed';
+  const load = isZip ? handleZip(file) : file.text().then((text) => loadCsvText(text));
+  load.catch((err) => showNotice(`Couldn't read that file: ${err.message || err}`));
+}
+
+// For CSV/ZIP activities the route lives in the archive; extract and parse it
+// the first time that activity's detail view is opened.
+async function resolveRoute(activity) {
+  if (activity.polyline || !state.zip || !activity.file) return;
+  if (state.routeCache.has(activity.file)) {
+    activity.polyline = state.routeCache.get(activity.file);
+    return;
+  }
+  let polyline = null;
+  try {
+    let name = state.zipRoot + activity.file;
+    if (!state.zip.entries.has(name)) {
+      name = [...state.zip.entries.keys()].find((n) => n.endsWith(activity.file)) ?? name;
+    }
+    polyline = await routeFromFile(activity.file, await state.zip.extract(name));
+  } catch { /* unreadable route file — show stats without a map */ }
+  state.routeCache.set(activity.file, polyline);
+  activity.polyline = polyline;
 }
 
 // ---------- wiring ----------

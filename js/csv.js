@@ -79,6 +79,7 @@ export function parseActivitiesCsv(text) {
   const maxHrIdx = lastOf('Max Heart Rate');
   const avgWattsIdx = lastOf('Average Watts');
   const maxWattsIdx = lastOf('Max Watts');
+  const fileIdx = indicesOf('Filename')[0];
 
   if (dateIdx == null || typeIdx == null) {
     throw new Error('This doesn’t look like a Strava activities.csv (missing "Activity Date" / "Activity Type" columns).');
@@ -120,7 +121,8 @@ export function parseActivitiesCsv(text) {
       maxWatts: maxWattsIdx != null ? toNumber(row[maxWattsIdx]) : 0,
       wWatts: 0,
       estWatts: false,
-      polyline: null, // route shapes live in the export's GPX/FIT files, not the CSV
+      polyline: null, // filled lazily from the export ZIP's route file, when available
+      file: fileIdx != null ? row[fileIdx] : '',
     });
   }
   if (activities.length === 0) throw new Error('No activities could be parsed from that file.');

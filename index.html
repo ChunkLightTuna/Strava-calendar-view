@@ -41,8 +41,8 @@
           </div>
           <div class="empty-card">
             <h3>&#x1F4C2; Drop your Strava export</h3>
-            <p>Download your data from Strava (Settings &#x2192; My Account &#x2192; Get Started) and drop the <code>activities.csv</code> here.</p>
-            <button class="btn btn-primary" id="btn-csv-hero">Load activities.csv</button>
+            <p>Download your data from Strava (Settings &#x2192; My Account &#x2192; Get Started) and drop the whole export <code>.zip</code> here — route maps included. Just the <code>activities.csv</code> works too. No subscription needed.</p>
+            <button class="btn btn-primary" id="btn-csv-hero">Load export (.zip or .csv)</button>
           </div>
         </div>
         <p class="empty-footnote">Just looking around? <a href="#" id="link-demo">Load demo data</a></p>
@@ -64,10 +64,10 @@
   </div>
 
   <div class="drop-overlay" id="drop-overlay" hidden>
-    <div class="drop-overlay-inner">Drop <code>activities.csv</code> to load</div>
+    <div class="drop-overlay-inner">Drop your Strava export (<code>.zip</code> or <code>activities.csv</code>)</div>
   </div>
 
-  <input type="file" id="file-input" accept=".csv,text/csv" hidden>
+  <input type="file" id="file-input" accept=".csv,.zip,text/csv,application/zip" hidden>
 
   <dialog class="modal" id="connect-modal">
     <form method="dialog" class="modal-body" id="connect-form">

@@ -35,16 +35,22 @@ ever sent to `strava.com`.
 Activities are fetched per month and cached in localStorage (past months
 indefinitely, the current month for 15 minutes — or hit **Refresh**).
 
-### 2. Drop in your Strava export (no setup)
+### 2. Drop in your Strava export (no setup, no subscription)
 
 1. On Strava: **Settings → My Account → Download or Delete Your Account →
    Get Started** (only step 2, "Download Request"), or use the
    [export page](https://www.strava.com/athlete/delete_your_account).
-2. Strava emails you an archive; it contains `activities.csv`.
-3. Drag the CSV onto the page (or use **Load CSV**).
+2. Strava emails you an archive (`export_<id>.zip`).
+3. Drag the **whole ZIP** onto the page (or use **Load CSV**). Just the
+   `activities.csv` from inside it works too, but the ZIP also gives you
+   **route maps**, parsed from the archive's GPX/TCX/FIT files (gzipped
+   ones included) when you open an activity.
 
-Everything is parsed in the browser. Note: export timestamps are UTC, so an
-activity near midnight can land on the neighboring day.
+Everything is parsed in the browser — the archive is read piecewise from
+disk, so large exports are fine. Activity stats persist across reloads;
+route maps need the ZIP, so re-drop it next visit if you want maps.
+Note: export timestamps are UTC, so an activity near midnight can land on
+the neighboring day.
 
 ## Features
 
