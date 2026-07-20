@@ -406,6 +406,22 @@ a { color: var(--accent); }
 }
 .modal-hint { font-size: 12.5px !important; color: var(--text-muted) !important; }
 
+.diag { display: flex; flex-direction: column; gap: 8px; }
+.diag .btn { align-self: flex-start; }
+.diag-output {
+  font-size: 13px;
+  background: var(--page);
+  border: 1px solid var(--grid-line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  word-break: break-word;
+}
+.diag-ok { color: var(--text-secondary); }
+.diag-fail { color: var(--danger); }
+
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 .modal-actions-split { justify-content: space-between; }
 .modal-actions-split > :last-child { margin-left: auto; }

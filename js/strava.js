@@ -121,6 +121,42 @@ async function accessToken() {
   return token.access_token;
 }
 
+// Probe the connection: what did Strava grant, and which endpoints work?
+// /athlete needs only the 'read' scope; /athlete/activities needs activity:read.
+export async function diagnostics() {
+  const report = {
+    athlete: getToken()?.athlete ? `${getToken().athlete.firstname ?? ''} ${getToken().athlete.lastname ?? ''}`.trim() : null,
+    grantedScope: getToken()?.grantedScope || '(not recorded — authorized before this feature)',
+    checks: [],
+  };
+  let token;
+  try {
+    token = await accessToken();
+  } catch (err) {
+    report.checks.push({ name: 'Token refresh', status: '—', ok: false, message: err.message });
+    return report;
+  }
+  for (const [name, url] of [
+    ['Profile (read scope)', 'https://www.strava.com/api/v3/athlete'],
+    ['Activities (activity:read scope)', 'https://www.strava.com/api/v3/athlete/activities?per_page=1'],
+  ]) {
+    try {
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      let message = '';
+      if (!res.ok) {
+        try {
+          const body = await res.json();
+          message = [body.message, ...(body.errors ?? []).map((e) => `${e.resource}.${e.field}: ${e.code}`)].filter(Boolean).join('; ');
+        } catch { /* no body */ }
+      }
+      report.checks.push({ name, status: res.status, ok: res.ok, message });
+    } catch (err) {
+      report.checks.push({ name, status: 'network', ok: false, message: err.message });
+    }
+  }
+  return report;
+}
+
 function compact(activity) {
   return {
     id: activity.id,

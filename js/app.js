@@ -239,6 +239,29 @@ function wireEvents() {
   ['select-units', 'select-week-start', 'select-theme'].forEach((id) =>
     $(id).addEventListener('change', applySettingsFromForm));
 
+  $('btn-diagnostics').addEventListener('click', async () => {
+    const out = $('diag-output');
+    out.hidden = false;
+    out.textContent = 'Running…';
+    if (!strava.isConnected()) {
+      out.textContent = 'Not connected to Strava (CSV/demo data doesn’t use the API).';
+      return;
+    }
+    const report = await strava.diagnostics();
+    out.replaceChildren();
+    const line = (text, ok) => {
+      const div = document.createElement('div');
+      div.className = ok === false ? 'diag-fail' : 'diag-ok';
+      div.textContent = text;
+      out.appendChild(div);
+    };
+    if (report.athlete) line(`Athlete: ${report.athlete}`);
+    line(`Granted scopes: ${report.grantedScope}`);
+    for (const c of report.checks) {
+      line(`${c.name}: ${c.ok ? `OK (${c.status})` : `FAILED (${c.status}${c.message ? ` — ${c.message}` : ''})`}`, c.ok);
+    }
+  });
+
   $('btn-disconnect').addEventListener('click', () => {
     if (!confirm('Clear the Strava connection, saved credentials, and cached data from this browser?')) return;
     strava.disconnect();
