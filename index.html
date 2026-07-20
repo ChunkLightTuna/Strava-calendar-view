@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <title>Strava Calendar</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%85%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="topbar-left">
+        <h1 class="app-title">Strava Calendar</h1>
+        <span class="source-badge" id="source-badge" hidden></span>
+      </div>
+      <nav class="month-nav" aria-label="Month navigation">
+        <button class="btn btn-icon" id="btn-prev" title="Previous month" aria-label="Previous month">&#x2039;</button>
+        <button class="btn" id="btn-today">Today</button>
+        <button class="btn btn-icon" id="btn-next" title="Next month" aria-label="Next month">&#x203A;</button>
+        <h2 class="month-title" id="month-title" aria-live="polite"></h2>
+      </nav>
+      <div class="topbar-right">
+        <button class="btn" id="btn-refresh" title="Re-fetch this month from Strava" hidden>&#x21bb; Refresh</button>
+        <button class="btn" id="btn-connect">Connect Strava</button>
+        <button class="btn" id="btn-csv">Load CSV</button>
+        <button class="btn btn-icon" id="btn-settings" title="Settings" aria-label="Settings">&#x2699;&#xFE0E;</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="empty-state" id="empty-state" hidden>
+        <h2>Your training, as a calendar</h2>
+        <p>Everything runs in your browser — no server, no account here, nothing leaves this page.</p>
+        <div class="empty-cards">
+          <div class="empty-card">
+            <h3>&#x1F517; Connect to Strava</h3>
+            <p>Live data via your own free Strava API application. One-time, two-minute setup.</p>
+            <button class="btn btn-primary" id="btn-connect-hero">Connect Strava</button>
+          </div>
+          <div class="empty-card">
+            <h3>&#x1F4C2; Drop your Strava export</h3>
+            <p>Download your data from Strava (Settings &#x2192; My Account &#x2192; Get Started) and drop the <code>activities.csv</code> here.</p>
+            <button class="btn btn-primary" id="btn-csv-hero">Load activities.csv</button>
+          </div>
+        </div>
+        <p class="empty-footnote">Just looking around? <a href="#" id="link-demo">Load demo data</a></p>
+      </section>
+
+      <section id="calendar-section" hidden>
+        <div class="legend" id="legend" aria-label="Sport legend"></div>
+        <div class="calendar" id="calendar" role="grid" aria-label="Activity calendar"></div>
+        <div class="summary" id="summary" aria-label="Monthly totals"></div>
+      </section>
+
+      <div class="notice" id="notice" hidden></div>
+    </main>
+
+    <footer class="pagefoot">
+      <p>Client-side only &#183; data stays in your browser &#183;
+        <a href="https://github.com/ChunkLightTuna/Strava-calendar-view">source</a></p>
+    </footer>
+  </div>
+
+  <div class="drop-overlay" id="drop-overlay" hidden>
+    <div class="drop-overlay-inner">Drop <code>activities.csv</code> to load</div>
+  </div>
+
+  <input type="file" id="file-input" accept=".csv,text/csv" hidden>
+
+  <dialog class="modal" id="connect-modal">
+    <form method="dialog" class="modal-body" id="connect-form">
+      <h2>Connect your Strava account</h2>
+      <p>Strava's API needs an "application" to authorize against. Because this site has no server,
+         you use <strong>your own</strong> free API application — your credentials stay in this browser.</p>
+      <ol class="setup-steps">
+        <li>Open <a href="https://www.strava.com/settings/api" target="_blank" rel="noopener">strava.com/settings/api</a> and create an application (any name/category).</li>
+        <li>Set <strong>Authorization Callback Domain</strong> to <code id="callback-domain"></code></li>
+        <li>Copy the Client ID and Client Secret below.</li>
+      </ol>
+      <label>Client ID
+        <input type="text" id="input-client-id" inputmode="numeric" autocomplete="off" required placeholder="e.g. 123456">
+      </label>
+      <label>Client Secret
+        <input type="password" id="input-client-secret" autocomplete="off" required placeholder="40-character hex string">
+      </label>
+      <p class="modal-hint">Stored only in this browser's localStorage. This page never sends them anywhere except directly to strava.com.</p>
+      <div class="modal-actions">
+        <button class="btn" value="cancel" formnovalidate>Cancel</button>
+        <button class="btn btn-primary" value="connect" id="btn-do-connect">Authorize with Strava</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="modal" id="settings-modal">
+    <form method="dialog" class="modal-body">
+      <h2>Settings</h2>
+      <label>Units
+        <select id="select-units">
+          <option value="metric">Kilometers</option>
+          <option value="imperial">Miles</option>
+        </select>
+      </label>
+      <label>Week starts on
+        <select id="select-week-start">
+          <option value="1">Monday</option>
+          <option value="0">Sunday</option>
+        </select>
+      </label>
+      <label>Theme
+        <select id="select-theme">
+          <option value="auto">System</option>
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+        </select>
+      </label>
+      <div class="modal-actions modal-actions-split">
+        <button type="button" class="btn btn-danger" id="btn-disconnect">Disconnect &amp; clear data</button>
+        <button class="btn btn-primary" value="close">Done</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
