@@ -2,6 +2,7 @@
 // calendar renderer and handles all UI events.
 
 import * as strava from './strava.js';
+import * as icu from './icu.js';
 import { parseActivitiesCsv } from './csv.js';
 import { renderCalendar, renderLegend, renderSummary, monthTitle } from './calendar.js';
 import { demoActivities } from './demo.js';
@@ -20,7 +21,7 @@ const $ = (id) => document.getElementById(id);
 const state = {
   year: new Date().getFullYear(),
   month: new Date().getMonth(),
-  source: null, // 'api' | 'csv' | 'demo'
+  source: null, // 'api' (Strava) | 'icu' | 'csv' | 'demo'
   csvActivities: null,
   zip: null, // open export archive (this session only — File handles don't persist)
   zipRoot: '',
@@ -66,6 +67,9 @@ async function activitiesForCurrentMonth({ force = false } = {}) {
   if (state.source === 'api') {
     return strava.activitiesForMonth(state.year, state.month, { force });
   }
+  if (state.source === 'icu') {
+    return icu.activitiesForMonth(state.year, state.month, { force });
+  }
   if (state.source === 'csv') return state.csvActivities ?? [];
   if (state.source === 'demo') return (state.demoData ??= demoActivities());
   return [];
@@ -76,6 +80,9 @@ async function activitiesForCurrentMonth({ force = false } = {}) {
 async function monthActivities(year, month) {
   if (state.source === 'api') {
     try { return await strava.activitiesForMonth(year, month); } catch { return []; }
+  }
+  if (state.source === 'icu') {
+    try { return await icu.activitiesForMonth(year, month); } catch { return []; }
   }
   const all = state.source === 'csv' ? (state.csvActivities ?? [])
     : state.source === 'demo' ? (state.demoData ??= demoActivities()) : [];
@@ -111,11 +118,11 @@ async function render({ force = false } = {}) {
   $('month-title').textContent = monthTitle(state.year, state.month);
   $('empty-state').hidden = state.source !== null;
   $('calendar-section').hidden = state.source === null;
-  $('btn-refresh').hidden = state.source !== 'api';
+  $('btn-refresh').hidden = state.source !== 'api' && state.source !== 'icu';
 
   const badge = $('source-badge');
   badge.hidden = state.source === null;
-  badge.textContent = { api: 'Strava API', csv: 'Export data', demo: 'Demo data' }[state.source] ?? '';
+  badge.textContent = { api: 'Strava API', icu: 'intervals.icu', csv: 'Export data', demo: 'Demo data' }[state.source] ?? '';
 
   if (state.source === null) return;
 
@@ -265,10 +272,20 @@ function handleFiles(fileList) {
   load.catch((err) => showNotice(`Couldn't read that: ${err.message || err}`));
 }
 
-// For CSV/ZIP activities the route lives in the archive; extract and parse it
-// the first time that activity's detail view is opened.
+// Routes are resolved lazily the first time a detail view opens: from the
+// GPS stream for intervals.icu activities, or from the export archive for
+// CSV/ZIP activities.
 async function resolveRoute(activity) {
-  if (activity.polyline || !state.zip || !activity.file) return;
+  if (activity.polyline) return;
+  if (activity.routeSource === 'icu') {
+    const cacheKey = `icu:${activity.id}`;
+    if (!state.routeCache.has(cacheKey)) {
+      state.routeCache.set(cacheKey, await icu.fetchRoute(activity.id));
+    }
+    activity.polyline = state.routeCache.get(cacheKey);
+    return;
+  }
+  if (!state.zip || !activity.file) return;
   if (state.routeCache.has(activity.file)) {
     activity.polyline = state.routeCache.get(activity.file);
     return;
@@ -348,14 +365,35 @@ function wireEvents() {
   cal.addEventListener('touchcancel', () => { swipeStart = null; }, { passive: true });
   cal.addEventListener('animationend', () => cal.classList.remove('slide-from-right', 'slide-from-left'));
 
-  // Connect flow — an existing connection without activity scopes needs a
-  // fresh authorization, so fall through to the modal in that case.
-  const openConnect = () => {
+  // Connect flow. The header button offers both live sources (or switches
+  // straight back to an already-connected one); the hero cards go direct.
+  const openStravaConnect = () => {
+    // an existing connection without activity scopes needs a fresh authorization
     if (strava.isConnected() && strava.hasActivityScope()) { setSource('api'); return; }
     openConnectModal();
   };
-  $('btn-connect').addEventListener('click', openConnect);
-  $('btn-connect-hero').addEventListener('click', openConnect);
+  const openIcuConnect = () => {
+    if (icu.isConnected()) { setSource('icu'); return; }
+    const creds = icu.getCredentials();
+    $('input-icu-athlete').value = creds?.athleteId ?? '';
+    $('input-icu-key').value = creds?.apiKey ?? '';
+    $('icu-modal').showModal();
+  };
+  $('btn-connect').addEventListener('click', () => {
+    if (icu.isConnected() && state.source !== 'icu') { setSource('icu'); return; }
+    if (strava.isConnected() && strava.hasActivityScope() && state.source !== 'api') { setSource('api'); return; }
+    $('chooser-modal').showModal();
+  });
+  $('choose-icu').addEventListener('click', () => { $('chooser-modal').close(); openIcuConnect(); });
+  $('choose-strava').addEventListener('click', () => { $('chooser-modal').close(); openStravaConnect(); });
+  $('btn-chooser-cancel').addEventListener('click', () => $('chooser-modal').close());
+  $('btn-connect-hero').addEventListener('click', openStravaConnect);
+  $('btn-icu-hero').addEventListener('click', openIcuConnect);
+  $('icu-modal').addEventListener('close', () => {
+    if ($('icu-modal').returnValue !== 'connect') return;
+    icu.setCredentials($('input-icu-athlete').value, $('input-icu-key').value);
+    setSource('icu'); // render() fetches and surfaces any auth error as a notice
+  });
   $('connect-modal').addEventListener('close', () => {
     if ($('connect-modal').returnValue !== 'connect') return;
     strava.setCredentials($('input-client-id').value, $('input-client-secret').value);
@@ -503,6 +541,10 @@ async function init() {
   }
   if (justConnected || (savedSource === 'api' && strava.isConnected())) {
     setSource('api');
+    return;
+  }
+  if (savedSource === 'icu' && icu.isConnected()) {
+    setSource('icu');
     return;
   }
   if (savedSource === 'csv') {

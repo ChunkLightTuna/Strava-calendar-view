@@ -22,8 +22,8 @@
         <h2 class="month-title" id="month-title" aria-live="polite"></h2>
       </nav>
       <div class="topbar-right">
-        <button class="btn" id="btn-refresh" title="Re-fetch this month from Strava" hidden>&#x21bb; Refresh</button>
-        <button class="btn" id="btn-connect">Connect Strava</button>
+        <button class="btn" id="btn-refresh" title="Re-fetch this month" hidden>&#x21bb; Refresh</button>
+        <button class="btn" id="btn-connect">Connect</button>
         <button class="btn" id="btn-csv" title="Load a Strava/Garmin export .zip, GPX/TCX/FIT files, or activities.csv">Load export</button>
         <button class="btn btn-icon" id="btn-settings" title="Settings" aria-label="Settings">&#x2699;&#xFE0E;</button>
       </div>
@@ -34,6 +34,11 @@
         <h2>Your training, as a calendar</h2>
         <p>Everything runs in your browser — no server, no account here, nothing leaves this page.</p>
         <div class="empty-cards">
+          <div class="empty-card">
+            <h3>&#x1F504; Connect intervals.icu</h3>
+            <p>Free &amp; automatic: <a href="https://intervals.icu" target="_blank" rel="noopener">intervals.icu</a> auto-syncs from Garmin, COROS, Wahoo, Suunto, Polar&#8230; and this calendar reads it live with your API key.</p>
+            <button class="btn btn-primary" id="btn-icu-hero">Connect intervals.icu</button>
+          </div>
           <div class="empty-card">
             <h3>&#x1F517; Connect to Strava</h3>
             <p>Live data via your own Strava API application. Two-minute setup; requires a Strava subscription (Strava's rule for API access).</p>
@@ -69,6 +74,45 @@
   </div>
 
   <input type="file" id="file-input" accept=".csv,.zip,.gpx,.tcx,.fit,.gz,text/csv,application/zip" multiple hidden>
+
+  <dialog class="modal" id="chooser-modal">
+    <div class="modal-body">
+      <h2>Connect a data source</h2>
+      <button type="button" class="choice" id="choose-icu">
+        <strong>&#x1F504; intervals.icu</strong>
+        <span>Free &amp; automatic — syncs from Garmin, COROS, Wahoo, Suunto, Polar&#8230;</span>
+      </button>
+      <button type="button" class="choice" id="choose-strava">
+        <strong>&#x1F517; Strava API</strong>
+        <span>Your own Strava API app — requires a Strava subscription</span>
+      </button>
+      <div class="modal-actions">
+        <button type="button" class="btn" id="btn-chooser-cancel">Cancel</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="modal" id="icu-modal">
+    <form method="dialog" class="modal-body" id="icu-form">
+      <h2>Connect intervals.icu</h2>
+      <p><a href="https://intervals.icu" target="_blank" rel="noopener">intervals.icu</a> is a free training platform that auto-syncs from Garmin, COROS, Wahoo, Suunto, Polar and more. This calendar reads it live — no manual exports.</p>
+      <ol class="setup-steps">
+        <li>Create a free intervals.icu account and link your watch platform under <strong>Settings</strong>.</li>
+        <li>Still in <a href="https://intervals.icu/settings" target="_blank" rel="noopener">Settings</a>, open <strong>Developer Settings</strong> and copy your <strong>Athlete ID</strong> and <strong>API Key</strong>.</li>
+      </ol>
+      <label>Athlete ID
+        <input type="text" id="input-icu-athlete" autocomplete="off" required placeholder="e.g. i12345">
+      </label>
+      <label>API Key
+        <input type="password" id="input-icu-key" autocomplete="off" required>
+      </label>
+      <p class="modal-hint">Stored only in this browser's localStorage. Only ever sent directly to intervals.icu.</p>
+      <div class="modal-actions">
+        <button class="btn" value="cancel" formnovalidate>Cancel</button>
+        <button class="btn btn-primary" value="connect">Connect</button>
+      </div>
+    </form>
+  </dialog>
 
   <dialog class="modal" id="connect-modal">
     <form method="dialog" class="modal-body" id="connect-form">

@@ -124,9 +124,13 @@ export function openDetail(activity, units) {
   }
 
   const link = document.getElementById('detail-strava-link');
-  const isApiId = typeof activity.id === 'number' || /^\d+$/.test(activity.id ?? '');
-  link.hidden = !isApiId;
-  if (isApiId) link.href = `https://www.strava.com/activities/${activity.id}`;
+  const isStravaId = typeof activity.id === 'number' || /^\d+$/.test(activity.id ?? '');
+  const url = activity.url ?? (isStravaId ? `https://www.strava.com/activities/${activity.id}` : null);
+  link.hidden = !url;
+  if (url) {
+    link.href = url;
+    link.textContent = activity.url ? 'View on intervals.icu ↗' : 'View on Strava ↗';
+  }
 
   const mapEl = document.getElementById('detail-map');
   destroyMap();

@@ -501,6 +501,23 @@ a { color: var(--accent); }
 }
 .modal-hint { font-size: 12.5px !important; color: var(--text-muted) !important; }
 
+.choice {
+  font: inherit;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  border: 1px solid var(--grid-line);
+  border-radius: 10px;
+  background: var(--page);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.choice:hover { border-color: var(--accent); }
+.choice strong { font-size: 15px; }
+.choice span { color: var(--text-secondary); font-size: 13px; }
+
 .diag { display: flex; flex-direction: column; gap: 8px; }
 .diag .btn { align-self: flex-start; }
 .diag-output {

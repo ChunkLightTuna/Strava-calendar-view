@@ -3,13 +3,13 @@
 // both stay in localStorage and are only ever sent to strava.com, which
 // permits CORS on its OAuth and API endpoints.
 
+import { makeMonthCache } from './monthcache.js';
+
 const LS = {
   creds: 'scv.credentials',
   token: 'scv.token',
   cachePrefix: 'scv.cache.',
 };
-
-const CURRENT_MONTH_TTL_MS = 15 * 60 * 1000;
 
 function readJson(key) {
   try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
@@ -230,27 +230,4 @@ async function fetchRange(afterEpochS, beforeEpochS) {
   return all;
 }
 
-// Fetch a calendar month's activities, with a localStorage cache: past months
-// are stable and cached indefinitely; the current month refreshes after a
-// short TTL or on demand (force=true).
-export async function activitiesForMonth(year, month, { force = false } = {}) {
-  const key = `${LS.cachePrefix}${year}-${String(month + 1).padStart(2, '0')}`;
-  const now = Date.now();
-  const monthStart = new Date(year, month, 1);
-  const monthEnd = new Date(year, month + 1, 1);
-  const isPast = monthEnd.getTime() < now;
-
-  const cached = readJson(key);
-  if (cached && !force && (isPast || now - cached.fetchedAt < CURRENT_MONTH_TTL_MS)) {
-    return cached.activities;
-  }
-  if (monthStart.getTime() > now) return []; // future month — nothing to fetch
-
-  // Pad a day each side so timezone offsets between UTC epochs and the
-  // athlete's local days can't drop edge activities; render filters by day.
-  const after = Math.floor(monthStart.getTime() / 1000) - 86400;
-  const before = Math.floor(monthEnd.getTime() / 1000) + 86400;
-  const activities = await fetchRange(after, before);
-  writeJson(key, { fetchedAt: now, activities });
-  return activities;
-}
+export const activitiesForMonth = makeMonthCache(LS.cachePrefix, fetchRange);

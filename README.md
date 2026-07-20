@@ -9,9 +9,26 @@ except to talk directly to `strava.com`.
 (Forks: enable GitHub Pages as described below and your copy is served at
 `https://<username>.github.io/Strava-calendar-view/`.)
 
-## Two ways to load your data
+## Three ways to load your data
 
-### 1. Connect to Strava (live data)
+### 1. Connect intervals.icu (live, free, any watch brand)
+
+[intervals.icu](https://intervals.icu) is a free training platform that
+auto-syncs from **Garmin, COROS, Wahoo, Suunto, Polar, Zwift** and more, and
+its API is browser-accessible — so the calendar reads it live with no server
+and no subscription:
+
+1. Create a free intervals.icu account and link your watch platform under
+   **Settings**.
+2. In **Settings → Developer Settings**, copy your **Athlete ID** (like
+   `i12345`) and **API Key**.
+3. Click **Connect → intervals.icu** on the site and paste them in.
+
+Activities arrive automatically as your watch syncs; route maps are fetched
+from the activity's GPS stream when you open it. Credentials live only in
+your browser's localStorage and are only ever sent to `intervals.icu`.
+
+### 2. Connect to Strava (live data)
 
 Strava's OAuth flow normally requires a server to hold a client secret. This
 site instead uses a **bring-your-own-app** flow: you create your own Strava
@@ -37,7 +54,7 @@ ever sent to `strava.com`.
 Activities are fetched per month and cached in localStorage (past months
 indefinitely, the current month for 15 minutes — or hit **Refresh**).
 
-### 2. Drop in export files (no setup, no subscription)
+### 3. Drop in export files (no setup, no account)
 
 Works with more than Strava — the page reads the standard activity file
 formats every platform exports:
@@ -125,6 +142,6 @@ domain.
 
 - Credentials, tokens, and cached activities live in `localStorage` on your
   machine. "Disconnect & clear data" in Settings wipes everything.
-- Network requests go to `www.strava.com` (data), and — only when you open
-  an activity's route map — `unpkg.com` (Leaflet) and
-  `tile.openstreetmap.org` (map tiles).
+- Network requests go to `www.strava.com` and/or `intervals.icu` (whichever
+  source you connect), and — only when you open an activity's route map —
+  `unpkg.com` (Leaflet) and `tile.openstreetmap.org` (map tiles).
