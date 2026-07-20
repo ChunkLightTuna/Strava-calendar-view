@@ -41,11 +41,16 @@ activity near midnight can land on the neighboring day.
 
 ## Features
 
-- Month calendar with color-coded activity chips (grouped by sport), linking
-  to the activity on Strava when loaded via the API
+- Month calendar with color-coded activity chips (grouped by sport)
+- Click an activity for a detail view: start time, distance, moving/elapsed
+  time, avg/max speed, elevation, heart rate, power (avg/weighted/max, when
+  available), the route on a map, and a link to the activity on Strava
+- Route maps come from the Strava API's summary polyline (rendered with
+  Leaflet + OpenStreetMap tiles); CSV-loaded activities have no route in
+  the CSV, so they show stats only
 - Monthly totals per sport (count, distance, time, elevation)
 - km/mi, Monday/Sunday week start, light/dark/system theme
-- Hover tooltips with distance, time, pace, and elevation
+- Hover tooltips with distance, time, speed/pace, HR, power, and elevation
 - Demo mode so you can try it without any data
 
 ## Hosting on GitHub Pages
@@ -64,8 +69,28 @@ python3 -m http.server 8000
 # open http://localhost:8000
 ```
 
+## Custom domain (Cloudflare)
+
+To serve the site from your own domain, in Cloudflare DNS:
+
+- **Subdomain** (e.g. `cal.example.com`): add a `CNAME` record with name
+  `cal` and target `<username>.github.io`.
+- **Apex** (`example.com`): add four `A` records on `@` pointing to GitHub
+  Pages' IPs: `185.199.108.153`, `185.199.109.153`, `185.199.110.153`,
+  `185.199.111.153` (optionally `AAAA` `2606:50c0:8000::153` … `:8003::153`).
+
+Set the record to **DNS only** (grey cloud) — GitHub issues the TLS
+certificate and proxying breaks the initial validation. Then in the repo:
+**Settings → Pages → Custom domain**, enter the domain, wait for the cert,
+and tick **Enforce HTTPS**. Verify the domain under your GitHub account
+settings (Pages → Verified domains) to prevent takeovers. Remember your
+Strava API app's **Authorization Callback Domain** must match the new
+domain.
+
 ## Privacy
 
 - Credentials, tokens, and cached activities live in `localStorage` on your
   machine. "Disconnect & clear data" in Settings wipes everything.
-- The only network requests the site makes are to `www.strava.com`.
+- Network requests go to `www.strava.com` (data), and — only when you open
+  an activity's route map — `unpkg.com` (Leaflet) and
+  `tile.openstreetmap.org` (map tiles).

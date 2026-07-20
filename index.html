@@ -122,6 +122,19 @@
     </form>
   </dialog>
 
+  <dialog class="modal modal-wide" id="detail-modal">
+    <div class="modal-body">
+      <h2 id="detail-title"></h2>
+      <p class="detail-sub" id="detail-sub"></p>
+      <div class="detail-map" id="detail-map" hidden></div>
+      <div class="detail-stats" id="detail-stats"></div>
+      <div class="modal-actions modal-actions-split">
+        <a class="btn" id="detail-strava-link" target="_blank" rel="noopener">View on Strava &#x2197;</a>
+        <button class="btn btn-primary" id="btn-detail-close">Close</button>
+      </div>
+    </div>
+  </dialog>
+
   <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
 
   <script type="module" src="js/app.js"></script>

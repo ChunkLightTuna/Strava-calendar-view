@@ -254,16 +254,22 @@ a { color: var(--accent); }
   display: flex;
   align-items: flex-start;
   gap: 6px;
+  margin: 0;
   padding: 3px 6px 3px 4px;
+  border: none;
   border-radius: 7px;
   border-left: 4px solid var(--baseline);
   background: color-mix(in srgb, var(--surface-1) 96%, var(--text-primary));
   text-decoration: none;
+  text-align: left;
+  font: inherit;
   color: var(--text-primary);
   font-size: 12px;
   line-height: 1.3;
+  cursor: pointer;
+  width: 100%;
 }
-a.chip:hover { background: color-mix(in srgb, var(--surface-1) 90%, var(--text-primary)); }
+.chip:hover { background: color-mix(in srgb, var(--surface-1) 90%, var(--text-primary)); }
 
 .chip-run { border-left-color: var(--sport-run); }
 .chip-ride { border-left-color: var(--sport-ride); }
@@ -402,6 +408,44 @@ a.chip:hover { background: color-mix(in srgb, var(--surface-1) 90%, var(--text-p
 
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 .modal-actions-split { justify-content: space-between; }
+.modal-actions-split > :last-child { margin-left: auto; }
+
+/* ---------- activity detail ---------- */
+
+.modal-wide { max-width: 640px; }
+
+.detail-sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.detail-map {
+  height: 300px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--grid-line);
+  background: var(--page);
+  color: var(--sport-strength); /* SVG-fallback route stroke */
+}
+.detail-map .route-svg { width: 100%; height: 100%; }
+
+.detail-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px 16px;
+}
+.detail-stat { display: flex; flex-direction: column; }
+.detail-stat-k {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.detail-stat-v { font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
+
+#detail-strava-link { text-decoration: none; }
 
 /* ---------- drag & drop overlay ---------- */
 

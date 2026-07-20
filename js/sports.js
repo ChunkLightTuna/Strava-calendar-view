@@ -74,6 +74,22 @@ export function formatElevation(meters, units) {
   return `${Math.round(meters)} m`;
 }
 
+export function formatSpeed(metersPerSecond, units) {
+  if (!metersPerSecond) return null;
+  if (units === 'imperial') return `${(metersPerSecond * 2.23694).toFixed(1)} mph`;
+  return `${(metersPerSecond * 3.6).toFixed(1)} km/h`;
+}
+
+export function formatHr(bpm) {
+  if (!bpm) return null;
+  return `${Math.round(bpm)} bpm`;
+}
+
+export function formatWatts(watts, { estimated = false } = {}) {
+  if (!watts) return null;
+  return `${Math.round(watts)} W${estimated ? ' (est.)' : ''}`;
+}
+
 export function formatPace(meters, seconds, units) {
   if (!meters || !seconds) return null;
   const perUnit = seconds / (units === 'imperial' ? meters / M_PER_MI : meters / 1000);

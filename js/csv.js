@@ -70,6 +70,15 @@ export function parseActivitiesCsv(text) {
   const elapsedIdxs = indicesOf('Elapsed Time');
   const movingIdx = indicesOf('Moving Time')[0];
   const elevIdx = indicesOf('Elevation Gain')[0];
+  // Stat columns: the raw (device-derived) copies come later in the header,
+  // so prefer the last occurrence of each.
+  const lastOf = (name) => indicesOf(name).at(-1);
+  const avgSpeedIdx = lastOf('Average Speed');
+  const maxSpeedIdx = lastOf('Max Speed');
+  const avgHrIdx = lastOf('Average Heart Rate');
+  const maxHrIdx = lastOf('Max Heart Rate');
+  const avgWattsIdx = lastOf('Average Watts');
+  const maxWattsIdx = lastOf('Max Watts');
 
   if (dateIdx == null || typeIdx == null) {
     throw new Error('This doesn’t look like a Strava activities.csv (missing "Activity Date" / "Activity Type" columns).');
@@ -87,15 +96,31 @@ export function parseActivitiesCsv(text) {
     if (distIdxs.length > 1 && row[distIdxs[1]] !== '') distance = toNumber(row[distIdxs[1]]);
     else if (distIdxs.length > 0) distance = toNumber(row[distIdxs[0]]) * 1000;
 
+    const movingTime = movingIdx != null ? toNumber(row[movingIdx]) : 0;
+    // Speed computed from distance/time is unit-unambiguous; the export's
+    // raw "Average Speed" column (m/s) is only a fallback.
+    const avgSpeed = distance && movingTime
+      ? distance / movingTime
+      : (avgSpeedIdx != null ? toNumber(row[avgSpeedIdx]) : 0);
+
     activities.push({
       id: idIdx != null ? row[idIdx] : null,
       name: nameIdx != null ? row[nameIdx] : '',
       type: row[typeIdx] || 'Workout',
       start,
       distance,
-      movingTime: movingIdx != null ? toNumber(row[movingIdx]) : 0,
+      movingTime,
       elapsedTime: elapsedIdxs.length ? toNumber(row[elapsedIdxs[0]]) : 0,
       elevation: elevIdx != null ? toNumber(row[elevIdx]) : 0,
+      avgSpeed,
+      maxSpeed: maxSpeedIdx != null ? toNumber(row[maxSpeedIdx]) : 0,
+      avgHr: avgHrIdx != null ? toNumber(row[avgHrIdx]) : 0,
+      maxHr: maxHrIdx != null ? toNumber(row[maxHrIdx]) : 0,
+      avgWatts: avgWattsIdx != null ? toNumber(row[avgWattsIdx]) : 0,
+      maxWatts: maxWattsIdx != null ? toNumber(row[maxWattsIdx]) : 0,
+      wWatts: 0,
+      estWatts: false,
+      polyline: null, // route shapes live in the export's GPX/FIT files, not the CSV
     });
   }
   if (activities.length === 0) throw new Error('No activities could be parsed from that file.');

@@ -117,6 +117,16 @@ function compact(activity) {
     movingTime: activity.moving_time || 0,
     elapsedTime: activity.elapsed_time || 0,
     elevation: activity.total_elevation_gain || 0,
+    avgSpeed: activity.average_speed || 0,
+    maxSpeed: activity.max_speed || 0,
+    avgHr: activity.average_heartrate || 0,
+    maxHr: activity.max_heartrate || 0,
+    avgWatts: activity.average_watts || 0,
+    wWatts: activity.weighted_average_watts || 0,
+    maxWatts: activity.max_watts || 0,
+    // device_watts=false means Strava estimated the power figures
+    estWatts: activity.average_watts ? activity.device_watts === false : false,
+    polyline: activity.map?.summary_polyline || null,
   };
 }
 

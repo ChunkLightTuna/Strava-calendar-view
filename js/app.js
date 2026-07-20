@@ -5,6 +5,7 @@ import * as strava from './strava.js';
 import { parseActivitiesCsv } from './csv.js';
 import { renderCalendar, renderLegend, renderSummary, monthTitle } from './calendar.js';
 import { demoActivities } from './demo.js';
+import { openDetail, wireDetailModal } from './detail.js';
 
 const LS_SETTINGS = 'scv.settings';
 const LS_CSV = 'scv.csvData';
@@ -89,6 +90,7 @@ async function render({ force = false } = {}) {
     activities,
     units: state.settings.units,
     weekStart: Number(state.settings.weekStart),
+    onActivityClick: (activity) => openDetail(activity, state.settings.units),
   };
   renderCalendar($('calendar'), opts);
   renderLegend($('legend'), activities.filter((a) => {
@@ -277,6 +279,8 @@ function wireEvents() {
 async function init() {
   loadSettings();
   wireEvents();
+  wireDetailModal();
+  document.getElementById('btn-detail-close').addEventListener('click', () => $('detail-modal').close());
 
   let justConnected = false;
   try {

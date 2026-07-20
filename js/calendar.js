@@ -2,7 +2,7 @@
 
 import {
   sportGroup, groupsInOrder, isDistanceGroup,
-  formatDistance, formatDuration, formatElevation, formatPace,
+  formatDistance, formatDuration, formatElevation, formatPace, formatSpeed, formatHr, formatWatts,
 } from './sports.js';
 
 function el(tag, className, text) {
@@ -29,10 +29,14 @@ function chipMeta(activity, units) {
 function tooltipHtml(activity, units) {
   const group = sportGroup(activity.type);
   const time = new Date(activity.start).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  const speedLed = group.key === 'ride' || group.key === 'winter' || group.key === 'paddle';
   const rows = [
     ['Distance', formatDistance(activity.distance, units)],
     ['Time', formatDuration(activity.movingTime || activity.elapsedTime)],
+    ['Speed', speedLed ? formatSpeed(activity.avgSpeed, units) : null],
     ['Pace', group.key === 'run' ? formatPace(activity.distance, activity.movingTime, units) : null],
+    ['Heart rate', formatHr(activity.avgHr)],
+    ['Power', formatWatts(activity.avgWatts, { estimated: activity.estWatts })],
     ['Elevation', formatElevation(activity.elevation, units)],
   ].filter(([, v]) => v);
   const dl = rows.map(([k, v]) => `<span class="tt-k">${k}</span><span class="tt-v">${v}</span>`).join('');
@@ -45,7 +49,7 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
-export function renderCalendar(container, { year, month, activities, units, weekStart }) {
+export function renderCalendar(container, { year, month, activities, units, weekStart, onActivityClick }) {
   container.replaceChildren();
 
   const byDay = new Map();
@@ -90,13 +94,9 @@ export function renderCalendar(container, { year, month, activities, units, week
 
     for (const activity of byDay.get(key) ?? []) {
       const group = sportGroup(activity.type);
-      const isApiId = typeof activity.id === 'number' || /^\d+$/.test(activity.id ?? '');
-      const chip = el(isApiId ? 'a' : 'span', `chip chip-${group.key}`);
-      if (isApiId) {
-        chip.href = `https://www.strava.com/activities/${activity.id}`;
-        chip.target = '_blank';
-        chip.rel = 'noopener';
-      }
+      const chip = el('button', `chip chip-${group.key}`);
+      chip.type = 'button';
+      chip.addEventListener('click', () => onActivityClick?.(activity));
       chip.appendChild(el('span', 'chip-icon', group.icon));
       const body = el('span', 'chip-body');
       body.appendChild(el('span', 'chip-name', activity.name || group.label));
