@@ -208,6 +208,20 @@ a { color: var(--accent); }
   overflow: hidden;
 }
 
+@keyframes slide-from-right {
+  from { opacity: 0.35; transform: translateX(28px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes slide-from-left {
+  from { opacity: 0.35; transform: translateX(-28px); }
+  to { opacity: 1; transform: none; }
+}
+.calendar.slide-from-right { animation: slide-from-right 0.18s ease-out; }
+.calendar.slide-from-left { animation: slide-from-left 0.18s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .calendar.slide-from-right, .calendar.slide-from-left { animation: none; }
+}
+
 .cal-head {
   display: grid;
   grid-template-columns: repeat(7, 1fr);

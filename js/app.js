@@ -217,10 +217,16 @@ async function resolveRoute(activity) {
 
 // ---------- wiring ----------
 
-function moveMonth(delta) {
+function moveMonth(delta, { animate = false } = {}) {
   const d = new Date(state.year, state.month + delta, 1);
   state.year = d.getFullYear();
   state.month = d.getMonth();
+  if (animate) {
+    const cal = $('calendar');
+    cal.classList.remove('slide-from-right', 'slide-from-left');
+    void cal.offsetWidth; // restart the animation
+    cal.classList.add(delta > 0 ? 'slide-from-right' : 'slide-from-left');
+  }
   render();
 }
 
@@ -248,6 +254,29 @@ function wireEvents() {
     if (e.key === 'ArrowLeft') moveMonth(-1);
     if (e.key === 'ArrowRight') moveMonth(1);
   });
+
+  // Swipe left/right on the calendar to change months. Passive listeners and
+  // a direction check keep vertical scrolling untouched.
+  const cal = $('calendar');
+  let swipeStart = null;
+  cal.addEventListener('touchstart', (e) => {
+    swipeStart = e.touches.length === 1
+      ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() }
+      : null;
+  }, { passive: true });
+  cal.addEventListener('touchend', (e) => {
+    if (!swipeStart) return;
+    const dx = e.changedTouches[0].clientX - swipeStart.x;
+    const dy = e.changedTouches[0].clientY - swipeStart.y;
+    const dt = Date.now() - swipeStart.t;
+    swipeStart = null;
+    if (dt > 600) return; // slow drag, not a swipe
+    if (Math.abs(dx) < 60) return; // too short to be intentional
+    if (Math.abs(dx) < Math.abs(dy) * 1.5) return; // mostly a vertical scroll
+    moveMonth(dx < 0 ? 1 : -1, { animate: true });
+  }, { passive: true });
+  cal.addEventListener('touchcancel', () => { swipeStart = null; }, { passive: true });
+  cal.addEventListener('animationend', () => cal.classList.remove('slide-from-right', 'slide-from-left'));
 
   // Connect flow — an existing connection without activity scopes needs a
   // fresh authorization, so fall through to the modal in that case.
