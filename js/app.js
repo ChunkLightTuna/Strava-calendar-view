@@ -18,7 +18,7 @@ const state = {
   month: new Date().getMonth(),
   source: null, // 'api' | 'csv' | 'demo'
   csvActivities: null,
-  settings: { units: 'metric', weekStart: 1, theme: 'auto' },
+  settings: { units: 'imperial', weekStart: 0, theme: 'auto' },
 };
 
 // ---------- settings ----------

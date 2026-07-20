@@ -56,7 +56,8 @@ activity near midnight can land on the neighboring day.
   Leaflet + OpenStreetMap tiles); CSV-loaded activities have no route in
   the CSV, so they show stats only
 - Monthly totals per sport (count, distance, time, elevation)
-- km/mi, Monday/Sunday week start, light/dark/system theme
+- mi/km (miles by default), Sunday/Monday week start (Sunday by default),
+  light/dark/system theme
 - Hover tooltips with distance, time, speed/pace, HR, power, and elevation
 - Demo mode so you can try it without any data
 
