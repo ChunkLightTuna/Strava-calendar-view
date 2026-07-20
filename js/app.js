@@ -167,9 +167,10 @@ function wireEvents() {
     if (e.key === 'ArrowRight') moveMonth(1);
   });
 
-  // Connect flow
+  // Connect flow — an existing connection without activity scopes needs a
+  // fresh authorization, so fall through to the modal in that case.
   const openConnect = () => {
-    if (strava.isConnected()) { setSource('api'); return; }
+    if (strava.isConnected() && strava.hasActivityScope()) { setSource('api'); return; }
     openConnectModal();
   };
   $('btn-connect').addEventListener('click', openConnect);
@@ -292,6 +293,10 @@ async function init() {
   let savedSource = null;
   try { savedSource = localStorage.getItem(LS_SOURCE); } catch { /* ok */ }
 
+  if (justConnected && !strava.hasActivityScope()) {
+    showNotice('Connected to Strava, but without permission to read activities — ' +
+      'click "Connect Strava" again and keep the "View data about your activities" checkboxes ticked.');
+  }
   if (justConnected || (savedSource === 'api' && strava.isConnected())) {
     setSource('api');
     return;

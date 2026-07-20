@@ -47,7 +47,9 @@ export function beginAuthorization() {
     client_id: creds.clientId,
     redirect_uri: redirectUri(),
     response_type: 'code',
-    approval_prompt: 'auto',
+    // force: always show the consent screen, so a re-connect can repair a
+    // previous authorization that was granted without the activity scopes
+    approval_prompt: 'force',
     scope: 'read,activity:read_all',
     state,
   });
@@ -70,8 +72,19 @@ async function tokenRequest(body) {
     throw new Error(`Strava token request failed (${res.status}). ${text.slice(0, 200)}`);
   }
   const token = await res.json();
+  // Refresh responses don't echo the granted scope — carry it forward.
+  const prev = getToken();
+  if (prev?.grantedScope && !token.grantedScope) token.grantedScope = prev.grantedScope;
   writeJson(LS.token, token);
   return token;
+}
+
+// Strava appends the actually-granted scopes to the callback URL; the athlete
+// can untick the activity checkboxes on the consent screen, in which case the
+// token can never read activities (the API answers 401/403).
+export function hasActivityScope() {
+  const scope = getToken()?.grantedScope;
+  return scope ? /activity:read/.test(scope) : true; // unknown → assume ok
 }
 
 // Call on page load: if we just came back from Strava with ?code=, finish the
@@ -88,11 +101,14 @@ export async function handleOAuthCallback() {
   }
   const expected = sessionStorage.getItem('scv.oauthState');
   sessionStorage.removeItem('scv.oauthState');
+  const grantedScope = params.get('scope') || '';
   history.replaceState(null, '', redirectUri());
   if (expected && params.get('state') !== expected) {
     throw new Error('OAuth state mismatch — please try connecting again.');
   }
   await tokenRequest({ code, grant_type: 'authorization_code' });
+  const token = getToken();
+  if (token) { token.grantedScope = grantedScope; writeJson(LS.token, token); }
   return true;
 }
 
@@ -141,9 +157,17 @@ async function fetchRange(afterEpochS, beforeEpochS) {
     const res = await fetch(`https://www.strava.com/api/v3/athlete/activities?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (res.status === 429) throw new Error('Strava rate limit reached — try again in ~15 minutes.');
-    if (res.status === 401) throw new Error('Strava session expired — reconnect from the Connect button.');
-    if (!res.ok) throw new Error(`Strava API error (${res.status}).`);
+    if (!res.ok) {
+      let detail = '';
+      try { detail = (await res.json()).message || ''; } catch { /* no body */ }
+      if (res.status === 429) throw new Error('Strava rate limit reached — try again in ~15 minutes.');
+      if (res.status === 401 || res.status === 403) {
+        throw new Error(`Strava rejected the request (${res.status}${detail ? `: ${detail}` : ''}). ` +
+          'This usually means the authorization is missing activity permissions — click "Connect Strava" ' +
+          'and re-authorize, keeping the "View data about your activities" checkboxes ticked.');
+      }
+      throw new Error(`Strava API error (${res.status}${detail ? `: ${detail}` : ''}).`);
+    }
     const batch = await res.json();
     all.push(...batch.map(compact));
     if (batch.length < 200) break;
